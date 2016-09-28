@@ -68,6 +68,6 @@ function cli(cfg) {
 lib.parseJson(cfgPath).then(function (cfg) {
   cli(cfg);
 }, function (err) {
-  console.error(err);
+  console.error('ERROR: runtime config file cannot be found!\n\n');
   cli({});
 });
