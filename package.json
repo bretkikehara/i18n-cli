@@ -1,5 +1,5 @@
 {
-  "name": "@bki/i18n-cli",
+  "name": "@bretkikehara/i18n-cli",
   "version": "1.0.0",
   "description": "i18n command line interface manager",
   "main": "src/cli.js",
