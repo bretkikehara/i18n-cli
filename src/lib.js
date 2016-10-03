@@ -45,7 +45,9 @@ const WRITE_SERIIALIZER = {
     return JSON.stringify(bundle, null, 2);
   },
   module: function (bundle) {
-    return 'module.exports = ' + JSON.stringify(bundle) + ';';
+    const bundleData = JSON.stringify(bundle);
+    const date = new Date().toJSON();
+    return `/** Bundle on ${ date } */\nmodule.exports = ${ bundleData };`;
   },
 };
 
