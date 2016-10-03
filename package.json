@@ -1,6 +1,6 @@
 {
   "name": "@bretkikehara/i18n-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "i18n command line interface manager",
   "main": "src/cli.js",
   "bin": {
