@@ -1,0 +1,5 @@
+.i18nrc
+.DS_Store
+
+node_modules/
+tmp/

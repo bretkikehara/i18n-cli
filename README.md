@@ -4,7 +4,7 @@ i18n CLI
 ## Quickstart
 
 1. npm install -g @bretkikehara/i18n-cli
-2. Generate a Google console service key.
+2. Generate a [Google console service key](https://github.com/bretkikehara/i18n-cli/wiki/Generating-Service-Account-Credentials).
 3. Enable the Google Sheets/Drive API.
 4. Exec `i18n csv` with parameters to generate a CSV to upload into your localization source.
 5. Editing your localization source.
