@@ -38,7 +38,7 @@ $ REACT_I18N=/Users/me/.i18nrc i18n [command]
 }
 ```
 
-### Example of .i18nrc project override
+### Example of .i18nrc multi-projects with overrides
 ```js
 {
   "serviceKey": "/Users/johndoe/.google/service-key-lang.json",
@@ -89,5 +89,5 @@ $ i18n csv project2
 - [x] Create a CSV from existing i18n modules or JSON files
 - [x] Download bundles from Google Sheets
 - [x] Configure CLI using `.i18nrc` file
-- [ ] Configure multiple projects using 1 Google service account.
+- [x] Configure multiple projects using 1 Google service account.
 - [ ] Import existing i18n modules or JSON files into Google Sheets
