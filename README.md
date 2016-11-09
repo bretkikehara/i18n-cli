@@ -54,4 +54,5 @@ This command will generate a CSV from compatible bundle files. This CSV can be a
 - [x] Create a CSV from existing i18n modules or JSON files
 - [x] Download bundles from Google Sheets
 - [x] Configure CLI using `.i18nrc` file
+- [ ] Configure multiple projects using 1 Google service account.
 - [ ] Import existing i18n modules or JSON files into Google Sheets
