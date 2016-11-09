@@ -9,7 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Bret K. Ikehara",
+  "author": "Bret K. Ikehara <bret.k.ikehara@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "glob": "^7.1.0",
