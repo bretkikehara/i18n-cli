@@ -134,16 +134,18 @@ function parseRows(locales, values) {
     } else {
       const bName = row[0];
       const bKey = row[1];
-      validLocales.forEach(function (locale) {
-        const columnIndex = localeColumnIndexes[locale];
-        if (!bundles[locale]) {
-          bundles[locale] = {};
-        }
-        if (!bundles[locale][bName]) {
-          bundles[locale][bName] = {};
-        }
-        bundles[locale][bName][bKey] = row[columnIndex];
-      });
+      if (bName && bKey) {
+        validLocales.forEach(function (locale) {
+          const columnIndex = localeColumnIndexes[locale];
+          if (!bundles[locale]) {
+            bundles[locale] = {};
+          }
+          if (!bundles[locale][bName]) {
+            bundles[locale][bName] = {};
+          }
+          bundles[locale][bName][bKey] = row[columnIndex];
+        });
+      }
     }
   });
   return bundles;
