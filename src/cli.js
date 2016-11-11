@@ -47,7 +47,19 @@ function cli(cfg) {
     .argv;
 }
 
-lib.parseJson(cfgPath).then(function (cfg) {
+function readConfig(cfgPath) {
+  return new Promise(function (resolve, reject) {
+    var cfg;
+    try {
+      cfg = require(cfgPath);
+      resolve(cfg);
+    } catch(e) {
+      reject(e);
+    }
+  });
+}
+
+readConfig(cfgPath).then(function (cfg) {
   cli(cfg);
 }, function (err) {
   console.error('ERROR: runtime config file cannot be found!\n\n');
