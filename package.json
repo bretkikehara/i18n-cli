@@ -7,6 +7,7 @@
     "i18n": "src/cli.js"
   },
   "scripts": {
+    "postpublish": "gulp postpublish",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Bret K. Ikehara <bret.k.ikehara@gmail.com>",
@@ -18,5 +19,11 @@
     "mkdirp": "^0.5.1",
     "npm": "^3.10.8",
     "yargs": "^5.0.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-git": "^1.12.0",
+    "gulp-load-plugins": "^1.4.0",
+    "gulp-util": "^3.0.7"
   }
 }
