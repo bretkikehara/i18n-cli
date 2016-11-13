@@ -12,7 +12,8 @@ function getProject(cfg, name) {
 
 function cli(cfg) {
   var defaultServiceKey = cfg.serviceKey,
-      defaultPath = cfg.output || './tmp',
+      defaultOutput = cfg.output || './tmp',
+      defaultPath = cfg.path || defaultOutput,
       defaultSpreadsheetId = cfg.spreadsheetId,
       defaultRange = cfg.range || 'A1:M1000',
       defaultLocales = cfg.locales || [ 'en-US' ],
@@ -28,10 +29,10 @@ function cli(cfg) {
           spreadsheetId = project.spreadsheetId || defaultSpreadsheetId,
           sheetname = project.sheetname || argv.project,
           range = project.range || defaultRange,
-          output = project.output || defaultPath,
+          path = project.path || defaultPath,
           format = project.format || defaultFormat,
           locales = lib.parseAsArray(project.locales || defaultLocales);
-      lib.downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, format, locales);
+      lib.downloadBundles(serviceKey, spreadsheetId, sheetname, range, path, format, locales);
     })
     .command('csv <project>', 'Generates a CSV file that can be added to the Google Sheet.', {}, function (argv) {
       var project = getProject(cfg, argv.project),
@@ -46,7 +47,7 @@ function cli(cfg) {
     })
     .command('filterviews <project>', 'Adds the filters views to the Google Sheet', {}, function (argv) {
       var project = getProject(cfg, argv.project),
-          path = project.output || defaultPath,
+          path = project.path || defaultPath,
           serviceKey = project.serviceKey || defaultServiceKey,
           spreadsheetId = project.spreadsheetId || defaultSpreadsheetId,
           sheetname = project.sheetname || argv.project,
