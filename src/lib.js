@@ -3,7 +3,8 @@ const fs = require('fs'),
     google = require('googleapis'),
     glob = require('glob'),
     mkdirp = require('mkdirp'),
-    WRITE_OPTS = { encoding: 'utf8' };
+    WRITE_OPTS = { encoding: 'utf8' },
+    sheets = google.sheets('v4');
 
 const EXT_TYPES = {
   json: '.lang.json',
@@ -98,7 +99,6 @@ function authorize(serviceKeyPath, scopes) {
 }
 
 function readSheet(jwtClient, spreadsheetId, range) {
-  const sheets = google.sheets('v4');
   return new Promise(function (resolve, reject) {
     sheets.spreadsheets.values.get({
       auth: jwtClient,
@@ -151,14 +151,14 @@ function parseRows(locales, values) {
   return bundles;
 }
 
-function downloadBundles(serviceKey, spreadsheetId, range, output, type, locales) {
+function downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, type, locales) {
   const scopes = [
     'https://www.googleapis.com/auth/spreadsheets',
   ];
   console.log(`authorizing access to ${ spreadsheetId }`);
   authorize(serviceKey, scopes).then(function (authClient) {
     console.log(`reading ${ spreadsheetId }`);
-    readSheet(authClient, spreadsheetId, range).then(function (response) {
+    readSheet(authClient, spreadsheetId, `${ sheetname }!${ range }`).then(function (response) {
       console.log(`writing bundles to ${ output }`);
       const bundles = parseRows(locales, response.values);
       return Promise.all(WRITE_BUNDLE[type](output, locales, bundles)).then(function (files) {
@@ -230,54 +230,68 @@ function convertRow(arr) {
   return rowData;
 }
 
-function readLocaleBundles(locales, basepath, transform) {
+function globLocaleBundles(locales, basepath, transform) {
   const localesRegex = new RegExp(`${ locales.join('|') }/`);
+  const ext = EXT_TYPES[transform];
+  if (!FILE_TRANSFORMS[transform]) {
+    return reject('transform not defined');
+  }
   return new Promise(function (resolve, reject) {
-    const ext = EXT_TYPES[transform];
-    if (!FILE_TRANSFORMS[transform]) {
-      return reject('transform not defined');
-    }
-    const myTransform = FILE_TRANSFORMS[transform].bind(this, basepath, ext);
-    glob(`**/*${ ext }`, {
-      cwd: basepath,
-    }, function (err, files) {
-      if (err) {
-        reject(err);
-      } else  {
-        Promise.all((files || []).filter(function (file) {
-          return localesRegex.test(file);
-        }).map(myTransform)).then(function (rows) {
-          const csvMap = {};
-
-          (rows || []).forEach(function (row) {
-            const locale = row[0];
-            const bName = row[1];
-            const bundle = row[2];
-
-            Object.keys(bundle).forEach(function (bKey) {
-              const bMsg = bundle[bKey];
-              if (!csvMap[`${ bName }.${ bKey }`]) {
-                csvMap[`${ bName }.${ bKey }`] = {};
-                csvMap[`${ bName }.${ bKey }`]._meta = {
-                  bName: bName,
-                  bKey: bKey,
-                };
-              }
-              csvMap[`${ bName }.${ bKey }`][locale] = bMsg;
-            });
-          });
-
-          const csv = Object.keys(csvMap).sort().map(function (mapKey) {
-            const row = csvMap[mapKey];
-            return convertRow(mergeArrays([row._meta.bName, row._meta.bKey], locales.map(function (locale) {
-              return row[locale];
-            })));
-          }).join('');
-          resolve(convertRow(mergeArrays(['bundle', 'key'], locales)) + csv);
-        }, function (err) {
+    try {
+      glob(`**/*${ ext }`, {
+        cwd: basepath,
+      }, function (err, files) {
+        if (err) {
           reject(err);
+        } else  {
+          resolve((files || []).filter(function (file) {
+            return localesRegex.test(file);
+          }));
+        }
+      });
+    } catch(e) {
+      reject(e);
+    }
+  });
+}
+
+function readLocaleBundles(locales, basepath, transform) {
+  return new Promise(function (resolve, reject) {
+    globLocaleBundles(locales, basepath, transform).then(function(files) {
+      const myTransform = FILE_TRANSFORMS[transform].bind(this, basepath, ext);
+      Promise.all(files.map(myTransform)).then(function (rows) {
+        const csvMap = {};
+
+        (rows || []).forEach(function (row) {
+          const locale = row[0];
+          const bName = row[1];
+          const bundle = row[2];
+
+          Object.keys(bundle).forEach(function (bKey) {
+            const bMsg = bundle[bKey];
+            if (!csvMap[`${ bName }.${ bKey }`]) {
+              csvMap[`${ bName }.${ bKey }`] = {};
+              csvMap[`${ bName }.${ bKey }`]._meta = {
+                bName: bName,
+                bKey: bKey,
+              };
+            }
+            csvMap[`${ bName }.${ bKey }`][locale] = bMsg;
+          });
         });
-      }
+
+        const csv = Object.keys(csvMap).sort().map(function (mapKey) {
+          const row = csvMap[mapKey];
+          return convertRow(mergeArrays([row._meta.bName, row._meta.bKey], locales.map(function (locale) {
+            return row[locale];
+          })));
+        }).join('');
+        resolve(convertRow(mergeArrays(['bundle', 'key'], locales)) + csv);
+      }, function (err) {
+        reject(err);
+      });
+    }, function (err) {
+      reject(err);
     });
   });
 }
@@ -338,9 +352,117 @@ function generateCSV(path, transform, output, locales) {
   });
 }
 
+function clearFilterViews(authClient, spreadsheetId, sheet, callback) {
+  console.log(`[${ sheet.properties.title }] Clearing old filter views`);
+  sheets.spreadsheets.batchUpdate({
+    auth: authClient,
+    spreadsheetId: spreadsheetId,
+    resource: {
+      "requests": sheet.filterViews.map(function (filter) {
+        return {
+          deleteFilterView: {
+            filterId: filter.filterViewId
+          },
+        };
+      }),
+    },
+  }, function (err, response) {
+    if (err){
+      console.log(err);
+      return;
+    }
+    console.log(`[${ sheet.properties.title }] Cleared old filter views`);
+    callback(response);
+  });
+}
+
+function createFilterViews(authClient, spreadsheetId, sheet, bundleNames, callback) {
+  console.log(`[${ sheet.properties.title }] Adding new filter views`);
+  sheets.spreadsheets.batchUpdate({
+    auth: authClient,
+    spreadsheetId: spreadsheetId,
+    resource: {
+      "requests": bundleNames.map(function (bundleName, index) {
+        return {
+          addFilterView: {
+            filter: {
+              title: bundleName,
+              range: {
+                sheetId: sheet.properties.sheetId,
+                startRowIndex: 0,
+                endRowIndex: 1000,
+                startColumnIndex: 0,
+                endColumnIndex: 24,
+              },
+              criteria: {
+                "0": {
+                  "condition": {
+                    "type": "TEXT_EQ",
+                    "values": [
+                      {
+                        "userEnteredValue": bundleName,
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+          },
+        };
+      }),
+    },
+  }, function (err, response) {
+    if (err){
+      console.log(err);
+      return;
+    }
+    console.log(`[${ sheet.properties.title }] Added new filter views`);
+    callback(response);
+  });
+}
+
+function generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, transform, locales) {
+  globLocaleBundles(locales, path, transform).then(function (files) {
+    var bundleName = /[^/]+\/([^/.]+).+/i;
+    var bundleNames = files.map(function (file) {
+      var match = bundleName.exec(file);
+      return match.pop();
+    }).sort();
+
+    const scopes = [
+      'https://www.googleapis.com/auth/spreadsheets',
+    ];
+    authorize(serviceKey, scopes).then(function (authClient) {
+      sheets.spreadsheets.get({
+        auth: authClient,
+        spreadsheetId: spreadsheetId,
+      }, function(err, spreadsheet) {
+        var sheet = spreadsheet.sheets.filter(function (sheet) {
+          return sheet.properties.title === sheetname;
+        })[0];
+
+        function createHandler(response) {
+          console.log(`[${ sheet.properties.title }] Finished generating filterviews`);
+        }
+
+        if (sheet.filterViews && sheet.filterViews.length) {
+          clearFilterViews(authClient, spreadsheetId, sheet, function (err) {
+            createFilterViews(authClient, spreadsheetId, sheet, bundleNames, createHandler);
+          });
+        } else {
+          createFilterViews(authClient, spreadsheetId, sheet, bundleNames, createHandler);
+        }
+      });
+    });
+  }, function (err) {
+    console.log(err);
+  });
+}
+
 module.exports = {
   generateCSV: generateCSV,
   downloadBundles: downloadBundles,
+  generateFilterViews: generateFilterViews,
   parseJson: parseJson,
   parseAsArray: parseAsArray,
 };

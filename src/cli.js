@@ -14,7 +14,7 @@ function cli(cfg) {
   var defaultServiceKey = cfg.serviceKey,
       defaultPath = cfg.output || './tmp',
       defaultSpreadsheetId = cfg.spreadsheetId,
-      defaultRange = cfg.range,
+      defaultRange = cfg.range || 'A1:M1000',
       defaultLocales = cfg.locales || [ 'en-US' ],
       defaultFilename = cfg.filename || 'i18n-' + (new Date().getTime()) + '.csv',
       defaultFormat = cfg.format || 'module';
@@ -26,11 +26,12 @@ function cli(cfg) {
       var project = getProject(cfg, argv.project),
           serviceKey = project.serviceKey || defaultServiceKey,
           spreadsheetId = project.spreadsheetId || defaultSpreadsheetId,
+          sheetname = project.sheetname || argv.project,
           range = project.range || defaultRange,
           output = project.output || defaultPath,
           format = project.format || defaultFormat,
           locales = lib.parseAsArray(project.locales || defaultLocales);
-      lib.downloadBundles(serviceKey, spreadsheetId, range, output, format, locales);
+      lib.downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, format, locales);
     })
     .command('csv <project>', 'Generates a CSV file that can be added to the Google Sheet.', {}, function (argv) {
       var project = getProject(cfg, argv.project),
@@ -42,6 +43,19 @@ function cli(cfg) {
 
       console.log('Generating the CSV for upload to Google Sheets...');
       lib.generateCSV(path, format, output + '/' + filename, locales);
+    })
+    .command('filterviews <project>', 'Adds the filters views to the Google Sheet', {}, function (argv) {
+      var project = getProject(cfg, argv.project),
+          path = project.output || defaultPath,
+          serviceKey = project.serviceKey || defaultServiceKey,
+          spreadsheetId = project.spreadsheetId || defaultSpreadsheetId,
+          sheetname = project.sheetname || argv.project,
+          range = project.range || defaultRange,
+          format = project.format || defaultFormat,
+          locales = lib.parseAsArray(project.locales || defaultLocales);
+
+      console.log('Update the filterview on the Google Sheet...');
+      lib.generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, format, locales);
     })
     .help()
     .argv;
