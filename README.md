@@ -6,9 +6,10 @@ i18n CLI
 1. npm install -g @bretkikehara/i18n-cli
 2. Generate a [Google console service key](https://github.com/bretkikehara/i18n-cli/wiki/Generating-Service-Account-Credentials).
 3. Enable the Google Sheets/Drive API.
-4. Exec `i18n csv` with parameters to generate a CSV to upload into your localization source.
-5. Editing your localization source.
-6. Exec `i18n bundles` to create the individual localization bundles.
+4. Exec `i18n csv <project>` with parameters to generate a CSV to upload into your localization source.
+5. Create a Google Sheet that will can be shared.
+6. Import the CSV into a google sheet.
+6. Exec `i18n bundles <project>` to create the project's localization bundles.
 7. Ensure that the `react-i18n` module is imported inside your component.
 8. Load you app to see the updates.
 

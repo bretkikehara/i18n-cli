@@ -185,13 +185,19 @@ function createBundleRows(bName, bundle) {
   return bundles;
 }
 
+var REGEX_BUNDLE_NAME = /[^/]+\/([^/.]+).+/i;
+function getBundleName(filepath) {
+  var match = REGEX_BUNDLE_NAME.exec(filepath);
+  return match.pop();
+}
+
 function createFileTransform(cb) {
-  return function (basepath, ext, filepath) {
+  return function (basepath, filepath) {
     return new Promise(function(resolve, reject) {
       cb(`${ basepath }/${ filepath }`, resolve, reject);
     }).then(function (bundle) {
       const locale = path.dirname(filepath);
-      const bName = path.basename(filepath, ext);
+      const bName = getBundleName(filepath);
       return Promise.resolve([locale, bName, bundle]);
     }, function (err) {
       return Promise.reject(err);
@@ -233,8 +239,8 @@ function convertRow(arr) {
 function globLocaleBundles(locales, basepath, transform) {
   const localesRegex = new RegExp(`${ locales.join('|') }/`);
   const ext = EXT_TYPES[transform];
-  if (!FILE_TRANSFORMS[transform]) {
-    return reject('transform not defined');
+  if (!ext) {
+    return reject('Extention is not defined');
   }
   return new Promise(function (resolve, reject) {
     try {
@@ -258,8 +264,9 @@ function globLocaleBundles(locales, basepath, transform) {
 function readLocaleBundles(locales, basepath, transform) {
   return new Promise(function (resolve, reject) {
     globLocaleBundles(locales, basepath, transform).then(function(files) {
-      const myTransform = FILE_TRANSFORMS[transform].bind(this, basepath, ext);
-      Promise.all(files.map(myTransform)).then(function (rows) {
+      console.log(`Found ${ files.length } file(s)`);
+      const myTransform = FILE_TRANSFORMS[transform].bind(this, basepath);
+      Promise.all((files || []).map(myTransform)).then(function (rows) {
         const csvMap = {};
 
         (rows || []).forEach(function (row) {
@@ -288,7 +295,8 @@ function readLocaleBundles(locales, basepath, transform) {
         }).join('');
         resolve(convertRow(mergeArrays(['bundle', 'key'], locales)) + csv);
       }, function (err) {
-        reject(err);
+        console.log(err);
+        reject('Failed to import file');
       });
     }, function (err) {
       reject(err);
@@ -345,7 +353,7 @@ function generateCSV(path, transform, output, locales) {
     writeFile(output, data).then(function () {
       console.log('Finished writing CSV\n', output, '\n');
     }, function (err) {
-      console.error(err);
+      console.error('Error writing file', err);
     });
   }, function (err) {
     console.error('Error reading bundles', err);
@@ -423,11 +431,7 @@ function createFilterViews(authClient, spreadsheetId, sheet, bundleNames, callba
 
 function generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, transform, locales) {
   globLocaleBundles(locales, path, transform).then(function (files) {
-    var bundleName = /[^/]+\/([^/.]+).+/i;
-    var bundleNames = files.map(function (file) {
-      var match = bundleName.exec(file);
-      return match.pop();
-    }).sort();
+    var bundleNames = files.map(getBundleName).sort();
 
     const scopes = [
       'https://www.googleapis.com/auth/spreadsheets',
