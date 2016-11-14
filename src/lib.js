@@ -473,8 +473,8 @@ function generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, 
         console.log(`[${ sheetname }] adding new filter views`);
         createFilterViews(authClient, spreadsheetId, sheet, bundleNames).then(function() {
           console.log(`[${ sheetname }] added new filter views`);
-        }, function() {
-          console.error(`[${ sheetname }] failed to add new filter views`);
+        }, function(err) {
+          console.error(`[${ sheetname }] failed to add new filter views\n`, err);
         });
       });
     }, function () {
