@@ -4,7 +4,10 @@ const fs = require('fs'),
     glob = require('glob'),
     mkdirp = require('mkdirp'),
     WRITE_OPTS = { encoding: 'utf8' },
-    sheets = google.sheets('v4');
+    sheets = google.sheets('v4'),
+    GOOGLE_APIS_SCOPES = [
+      'https://www.googleapis.com/auth/spreadsheets',
+    ];
 
 const EXT_TYPES = {
   json: '.lang.json',
@@ -80,12 +83,12 @@ function readServiceKey(key) {
   return parseJson(key);
 }
 
-function authorize(serviceKeyPath, scopes) {
-  if (!serviceKeyPath || !scopes) {
+function authorize(serviceKeyPath) {
+  if (!serviceKeyPath) {
     return Promise.reject('auth params do not exist');
   }
   return readServiceKey(serviceKeyPath).then(function (serviceKey) {
-    const jwtClient = new google.auth.JWT(serviceKey.client_email, null, serviceKey.private_key, scopes, null);
+    const jwtClient = new google.auth.JWT(serviceKey.client_email, null, serviceKey.private_key, GOOGLE_APIS_SCOPES, null);
     return new Promise(function (resolve, reject) {
       jwtClient.authorize(function (err, data) {
         if (err) {
@@ -152,11 +155,8 @@ function parseRows(locales, values) {
 }
 
 function downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, type, locales) {
-  const scopes = [
-    'https://www.googleapis.com/auth/spreadsheets',
-  ];
   console.log(`authorizing access to ${ spreadsheetId }`);
-  authorize(serviceKey, scopes).then(function (authClient) {
+  authorize(serviceKey).then(function (authClient) {
     console.log(`reading ${ spreadsheetId }`);
     readSheet(authClient, spreadsheetId, `${ sheetname }!${ range }`).then(function (response) {
       console.log(`writing bundles to ${ output }`);
@@ -433,10 +433,7 @@ function generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, 
   globLocaleBundles(locales, path, transform).then(function (files) {
     var bundleNames = files.map(getBundleName).sort();
 
-    const scopes = [
-      'https://www.googleapis.com/auth/spreadsheets',
-    ];
-    authorize(serviceKey, scopes).then(function (authClient) {
+    authorize(serviceKey).then(function (authClient) {
       sheets.spreadsheets.get({
         auth: authClient,
         spreadsheetId: spreadsheetId,
