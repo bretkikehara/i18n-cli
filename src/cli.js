@@ -1,6 +1,7 @@
 #! /usr/bin/env node
 
 var lib = require('./lib'),
+    pkg = require(`${ __dirname }/../package.json`),
     cfgPath = process.env.REACT_I18N || (process.cwd() + '/.i18nrc');
 
 function getProject(cfg, name) {
@@ -58,6 +59,14 @@ function cli(cfg) {
 
       console.log('Update the filterview on the Google Sheet...');
       lib.generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, format, locales);
+    })
+    .command({
+      command: 'version',
+      aliases: ['v'],
+      desc: 'i18n cli tool version',
+      handler: function () {
+        console.log(`i18n-cli v${ pkg.version }`);
+      },
     })
     .help()
     .argv;
