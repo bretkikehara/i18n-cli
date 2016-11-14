@@ -466,8 +466,8 @@ function generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, 
           });
         }
         return Promise.resolve(sheet);
-      }, function () {
-        console.error(`[${ sheetname }] failed to retrieve sheet ${ spreadsheetId }`);
+      }, function (err) {
+        console.error(`[${ sheetname }] failed to retrieve sheet ${ spreadsheetId }\n`, err);
         return Promise.reject();
       }).then(function(sheet) {
         console.log(`[${ sheetname }] adding new filter views`);
