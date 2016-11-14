@@ -38,12 +38,13 @@ function cli(cfg) {
       var project = getProject(cfg, argv.project),
           path = project.output || defaultPath,
           format = project.format || defaultFormat,
+          sheetname = project.sheetname || argv.project,
           output = project.output || defaultOutput,
           filename = project.filename || defaultFilename,
           locales = lib.parseAsArray(project.locales || defaultLocales);
 
       console.log('Generating the CSV for upload to Google Sheets...');
-      lib.generateCSV(path, format, output + '/' + filename, locales);
+      lib.generateCSV(sheetname, path, format, output + '/' + filename, locales);
     })
     .command('filterviews <project>', 'Adds the filters views to the Google Sheet', {}, function (argv) {
       var project = getProject(cfg, argv.project),

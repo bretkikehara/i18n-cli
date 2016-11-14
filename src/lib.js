@@ -155,25 +155,25 @@ function parseRows(locales, values) {
 }
 
 function downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, type, locales) {
-  console.log(`authorizing access to ${ spreadsheetId }`);
+  console.log(`[${ sheetname }] authorizing access to ${ spreadsheetId }`);
   authorize(serviceKey).then(function (authClient) {
-    console.log(`reading ${ spreadsheetId }`);
+    console.log(`[${ sheetname }] reading ${ spreadsheetId }`);
     readSheet(authClient, spreadsheetId, `${ sheetname }!${ range }`).then(function (response) {
-      console.log(`writing bundles to ${ output }`);
+      console.log(`[${ sheetname }] writing bundles to ${ output }`);
       const bundles = parseRows(locales, response.values);
       return Promise.all(WRITE_BUNDLE[type](output, locales, bundles)).then(function (files) {
         (files || []).forEach(function (o) {
-          console.log('wrote ', o.bName, ' - ', o.output);
+          console.log(`[${ sheetname }] wrote ${ bName } - ${ o.output }`);
         });
-        console.log('Finished importing')
+        console.log(`[${ sheetname }] Finished importing`)
       }, function (err) {
-        console.log('write error', err);
+        console.log(`[${ sheetname }] write error`, err);
       });
     }, function (err) {
-      console.error('Read error', err);
+      console.error(`[${ sheetname }] Read error`, err);
     });
   }, function (err) {
-    console.error('Authentication error', err);
+    console.error(`[${ sheetname }] Authentication error`, err);
   });
 }
 
@@ -240,7 +240,7 @@ function globLocaleBundles(locales, basepath, transform) {
   const localesRegex = new RegExp(`${ locales.join('|') }/`);
   const ext = EXT_TYPES[transform];
   if (!ext) {
-    return reject('Extention is not defined');
+    return Promise.reject('Extention is not defined');
   }
   return new Promise(function (resolve, reject) {
     try {
@@ -261,46 +261,38 @@ function globLocaleBundles(locales, basepath, transform) {
   });
 }
 
-function readLocaleBundles(locales, basepath, transform) {
-  return new Promise(function (resolve, reject) {
-    globLocaleBundles(locales, basepath, transform).then(function(files) {
-      console.log(`Found ${ files.length } file(s)`);
-      const myTransform = FILE_TRANSFORMS[transform].bind(this, basepath);
-      Promise.all((files || []).map(myTransform)).then(function (rows) {
-        const csvMap = {};
+function readLocaleBundles(files, locales, basepath, transform) {
+  const myTransform = FILE_TRANSFORMS[transform].bind(this, basepath);
+  return Promise.all((files || []).map(myTransform)).then(function (rows) {
+    const csvMap = {};
 
-        (rows || []).forEach(function (row) {
-          const locale = row[0];
-          const bName = row[1];
-          const bundle = row[2];
+    (rows || []).forEach(function (row) {
+      const locale = row[0];
+      const bName = row[1];
+      const bundle = row[2];
 
-          Object.keys(bundle).forEach(function (bKey) {
-            const bMsg = bundle[bKey];
-            if (!csvMap[`${ bName }.${ bKey }`]) {
-              csvMap[`${ bName }.${ bKey }`] = {};
-              csvMap[`${ bName }.${ bKey }`]._meta = {
-                bName: bName,
-                bKey: bKey,
-              };
-            }
-            csvMap[`${ bName }.${ bKey }`][locale] = bMsg;
-          });
-        });
-
-        const csv = Object.keys(csvMap).sort().map(function (mapKey) {
-          const row = csvMap[mapKey];
-          return convertRow(mergeArrays([row._meta.bName, row._meta.bKey], locales.map(function (locale) {
-            return row[locale];
-          })));
-        }).join('');
-        resolve(convertRow(mergeArrays(['bundle', 'key'], locales)) + csv);
-      }, function (err) {
-        console.log(err);
-        reject('Failed to import file');
+      Object.keys(bundle).forEach(function (bKey) {
+        const bMsg = bundle[bKey];
+        if (!csvMap[`${ bName }.${ bKey }`]) {
+          csvMap[`${ bName }.${ bKey }`] = {};
+          csvMap[`${ bName }.${ bKey }`]._meta = {
+            bName: bName,
+            bKey: bKey,
+          };
+        }
+        csvMap[`${ bName }.${ bKey }`][locale] = bMsg;
       });
-    }, function (err) {
-      reject(err);
     });
+
+    const csv = Object.keys(csvMap).sort().map(function (mapKey) {
+      const row = csvMap[mapKey];
+      return convertRow(mergeArrays([row._meta.bName, row._meta.bKey], locales.map(function (locale) {
+        return row[locale];
+      })));
+    }).join('');
+    return Promise.resolve(convertRow(mergeArrays(['bundle', 'key'], locales)) + csv);
+  }, function (err) {
+    return Promise.reject(err);
   });
 }
 
@@ -348,115 +340,148 @@ function writeFile(output, data) {
   });
 }
 
-function generateCSV(path, transform, output, locales) {
-  readLocaleBundles(locales, path, transform).then(function (data) {
-    writeFile(output, data).then(function () {
-      console.log('Finished writing CSV\n', output, '\n');
+function generateCSV(sheetname, path, transform, output, locales) {
+  console.log(`[${ sheetname }] finding bundles files`);
+  globLocaleBundles(locales, path, transform).then(function(files) {
+    console.log(`[${ sheetname }] reading the bundles data`);
+    readLocaleBundles(files, locales, path, transform).then(function (data) {
+      console.log(`[${ sheetname }] writing data to CSV`);
+      writeFile(output, data).then(function () {
+        console.log(`[${ sheetname }] wrote CSV - ${ output }`);
+      }, function (err) {
+        console.error(`[${ sheetname }] error writing CSV`);
+      });
     }, function (err) {
-      console.error('Error writing file', err);
+      console.error(`[${ sheetname }] error reading bundles`);
     });
-  }, function (err) {
-    console.error('Error reading bundles', err);
+  }, function() {
+    console.error(`[${ sheetname }] error finding bundles`);
   });
 }
 
 function clearFilterViews(authClient, spreadsheetId, sheet, callback) {
-  console.log(`[${ sheet.properties.title }] Clearing old filter views`);
-  sheets.spreadsheets.batchUpdate({
-    auth: authClient,
-    spreadsheetId: spreadsheetId,
-    resource: {
-      "requests": sheet.filterViews.map(function (filter) {
-        return {
-          deleteFilterView: {
-            filterId: filter.filterViewId
-          },
-        };
-      }),
-    },
-  }, function (err, response) {
-    if (err){
-      console.log(err);
-      return;
-    }
-    console.log(`[${ sheet.properties.title }] Cleared old filter views`);
-    callback(response);
+  return new Promise(function(resolve, reject) {
+    sheets.spreadsheets.batchUpdate({
+      auth: authClient,
+      spreadsheetId: spreadsheetId,
+      resource: {
+        "requests": sheet.filterViews.map(function (filter) {
+          return {
+            deleteFilterView: {
+              filterId: filter.filterViewId
+            },
+          };
+        }),
+      },
+    }, function (err, response) {
+      if (err){
+        reject(err);
+      } else {
+        resolve(response);
+      }
+    });
   });
 }
 
 function createFilterViews(authClient, spreadsheetId, sheet, bundleNames, callback) {
-  console.log(`[${ sheet.properties.title }] Adding new filter views`);
-  sheets.spreadsheets.batchUpdate({
-    auth: authClient,
-    spreadsheetId: spreadsheetId,
-    resource: {
-      "requests": bundleNames.map(function (bundleName, index) {
-        return {
-          addFilterView: {
-            filter: {
-              title: bundleName,
-              range: {
-                sheetId: sheet.properties.sheetId,
-                startRowIndex: 0,
-                endRowIndex: 1000,
-                startColumnIndex: 0,
-                endColumnIndex: 24,
-              },
-              criteria: {
-                "0": {
-                  "condition": {
-                    "type": "TEXT_EQ",
-                    "values": [
-                      {
-                        "userEnteredValue": bundleName,
-                      }
-                    ]
+  return new Promise(function(resolve, reject) {
+    sheets.spreadsheets.batchUpdate({
+      auth: authClient,
+      spreadsheetId: spreadsheetId,
+      resource: {
+        "requests": bundleNames.map(function (bundleName, index) {
+          return {
+            addFilterView: {
+              filter: {
+                title: bundleName,
+                range: {
+                  sheetId: sheet.properties.sheetId,
+                  startRowIndex: 0,
+                  endRowIndex: 1000,
+                  startColumnIndex: 0,
+                  endColumnIndex: 24,
+                },
+                criteria: {
+                  "0": {
+                    "condition": {
+                      "type": "TEXT_EQ",
+                      "values": [
+                        {
+                          "userEnteredValue": bundleName,
+                        }
+                      ]
+                    }
                   }
                 }
-              }
+              },
             },
-          },
-        };
-      }),
-    },
-  }, function (err, response) {
-    if (err){
-      console.log(err);
-      return;
-    }
-    console.log(`[${ sheet.properties.title }] Added new filter views`);
-    callback(response);
+          };
+        }),
+      },
+    }, function (err, response) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
+function retrieveSheets(authClient, spreadsheetId) {
+  return new Promise(function(resolve, reject) {
+    sheets.spreadsheets.get({
+      auth: authClient,
+      spreadsheetId: spreadsheetId,
+    }, function(err, spreadsheet) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(spreadsheet);
+      }
+    });
   });
 }
 
 function generateFilterViews(serviceKey, spreadsheetId, sheetname, range, path, transform, locales) {
+  console.log(`[${ sheetname }] finding bundles to create filter views`);
   globLocaleBundles(locales, path, transform).then(function (files) {
     var bundleNames = files.map(getBundleName).sort();
 
+    console.log(`[${ sheetname }] authorizing access to ${ spreadsheetId }`);
     authorize(serviceKey).then(function (authClient) {
-      sheets.spreadsheets.get({
-        auth: authClient,
-        spreadsheetId: spreadsheetId,
-      }, function(err, spreadsheet) {
+      console.log(`[${ sheetname }] retreving existing sheet information`);
+      retrieveSheets(authClient, spreadsheetId).then(function(spreadsheet) {
         var sheet = spreadsheet.sheets.filter(function (sheet) {
           return sheet.properties.title === sheetname;
         })[0];
-
-        function createHandler(response) {
-          console.log(`[${ sheet.properties.title }] Finished generating filterviews`);
-        }
-
         if (sheet.filterViews && sheet.filterViews.length) {
-          clearFilterViews(authClient, spreadsheetId, sheet, function (err) {
-            createFilterViews(authClient, spreadsheetId, sheet, bundleNames, createHandler);
+          console.log(`[${ sheetname }] clearing existing filter views`);
+          return clearFilterViews(authClient, spreadsheetId, sheet).then(function () {
+            console.log(`[${ sheetname }] cleared existing filter views`);
+            return Promise.resolve(sheet);
+          }, function() {
+            console.error(`[${ sheetname }] failed to clear existing filter views`);
+            return Promise.reject();
           });
-        } else {
-          createFilterViews(authClient, spreadsheetId, sheet, bundleNames, createHandler);
         }
+        return Promise.resolve(sheet);
+      }, function () {
+        console.error(`[${ sheetname }] failed to retrieve sheet ${ spreadsheetId }`);
+        return Promise.reject();
+      }).then(function(sheet) {
+        console.log(`[${ sheetname }] adding new filter views`);
+        createFilterViews(authClient, spreadsheetId, sheet, bundleNames).then(function() {
+          console.log(`[${ sheetname }] added new filter views`);
+        }, function() {
+          console.error(`[${ sheetname }] failed to add new filter views`);
+        });
       });
+    }, function () {
+      console.error(`[${ sheetname }] failed to authorize access to ${ spreadsheetId }`);
     });
   }, function (err) {
-    console.log(err);
+    console.error(`[${ sheetname }]`, err);
   });
 }
 
