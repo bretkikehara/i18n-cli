@@ -1,17 +1,27 @@
 i18n CLI
 ================================================
 
-## Quickstart
+## Quickstart: Create Spreadsheet
 
-1. npm install -g @bretkikehara/i18n-cli
+1. Install the i18n cli tool.
+  * `npm install -g @bretkikehara/i18n-cli`
 2. Generate a [Google console service key](https://github.com/bretkikehara/i18n-cli/wiki/Generating-Service-Account-Credentials).
-3. Enable the Google Sheets/Drive API.
-4. Exec `i18n csv <project>` with parameters to generate a CSV to upload into your localization source.
-5. Create a Google Sheet that will can be shared.
-6. Import the CSV into a google sheet.
-6. Exec `i18n bundles <project>` to create the project's localization bundles.
-7. Ensure that the `react-i18n` module is imported inside your component.
-8. Load you app to see the updates.
+3. Enable the Google Sheets or Google Drive APIs.
+4. Create a [project config file](https://github.com/bretkikehara/i18n-cli#config-file).
+5. On the command line, generate an uploadable CSV.
+  * `i18n csv <project>`
+6. Create a Google Sheet that will can be shared.
+7. Import the CSV into the Google Sheet.
+
+Now the spreadsheet should be ready to generate bundle files.
+
+## Quickstart: Generate Localization Bundles
+
+1. Ensure the <project>'s' `sheetname` config is the same name as the Google Spreadsheet sheet name.
+2. Ensure config `path` points to your app's localization directory.
+3. Exec `i18n bundles <project>` to create the <project>'s' localization bundles.
+4. Ensure that the `react-i18n` module is imported inside your component.
+5. Load you app to see the updates.
 
 ## Config file
 
@@ -53,13 +63,14 @@ $ REACT_I18N=/Users/me/.i18nrc i18n [command]
   "projects": {
   	// project that pulls from the global configs.
     "project1": {
-      "range": "sheet-name!A1:M1000",
+      "sheetname": "sheet-name",
+      "range": "A1:M1000",
     },
   	// project that overrides the global configs.
     "project2": {
       "serviceKey": "/Users/johndoe/.google/override-service-key-lang.json",
       "spreadsheetId": "override-google-sheet-id",
-      "range": "override-sheet-name!A1:M1000",
+      "sheetname": "sheet-name-2",
       "output": "/Users/johndoe/project-name2/i18n-directory/override",
       "locales": [
         "jp-JP",
