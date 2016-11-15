@@ -17,9 +17,9 @@ Now the spreadsheet should be ready to generate bundle files.
 
 ## Quickstart: Generate Localization Bundles
 
-1. Ensure the <project>'s' `sheetname` config is the same name as the Google Spreadsheet sheet name.
+1. Ensure the project's `sheetname` config is the same name as the Google Spreadsheet sheet name.
 2. Ensure config `path` points to your app's localization directory.
-3. Exec `i18n bundles <project>` to create the <project>'s' localization bundles.
+3. Exec `i18n bundles <project>` to create the project's localization bundles.
 4. Ensure that the `react-i18n` module is imported inside your component.
 5. Load you app to see the updates.
 
