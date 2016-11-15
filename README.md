@@ -33,52 +33,56 @@ $ REACT_I18N=/Users/me/.i18nrc i18n [command]
 
 ### Basic .i18nrc project
 ```js
-{
-  "serviceKey": "/Users/johndoe/.google/service-key-lang.json",
-  "projects": {
-    "project1": {
-      "spreadsheetId": "google-sheet-id",
-      "range": "sheet-name!A1:M1000",
-      "output": "/Users/johndoe/project-name2/i18n-directory",
-      "locales": [
-        "en-US",
-      ],
-      "format": "module",
+module.exports = (function(env) {
+  return {
+    "serviceKey": env.I18N_KEY || `${ env.HOME }/.google/service-key-lang.json`,
+    "projects": {
+      "project1": {
+        "spreadsheetId": "google-sheet-id",
+        "range": "sheet-name!A1:M1000",
+        "output": `${ env.HOME }/project-name2/i18n-directory`,
+        "locales": [
+          "en-US",
+        ],
+        "format": "module",
+      }
     }
-  }
-}
+  };
+})(process.env);
 ```
 
 ### Example of .i18nrc multi-projects with overrides
 ```js
-{
-  "serviceKey": "/Users/johndoe/.google/service-key-lang.json",
-  "spreadsheetId": "google-sheet-id",
-  "output": "/Users/johndoe/project-name/i18n-directory",
-  "locales": [
-    "en-US",
-    "fr-FR"
-  ],
-  "format": "module",
-  "projects": {
-  	// project that pulls from the global configs.
-    "project1": {
-      "sheetname": "sheet-name",
-      "range": "A1:M1000",
-    },
-  	// project that overrides the global configs.
-    "project2": {
-      "serviceKey": "/Users/johndoe/.google/override-service-key-lang.json",
-      "spreadsheetId": "override-google-sheet-id",
-      "sheetname": "sheet-name-2",
-      "output": "/Users/johndoe/project-name2/i18n-directory/override",
-      "locales": [
-        "jp-JP",
-      ],
-      "format": "json",
+module.exports = (function(env) {
+  return {
+    "serviceKey": env.I18N_KEY || `${ env.HOME }/.google/service-key-lang.json`,
+    "spreadsheetId": "google-sheet-id",
+    "output": `${ env.HOME }/project-name/i18n-directory`,
+    "locales": [
+      "en-US",
+      "fr-FR"
+    ],
+    "format": "module",
+    "projects": {
+     // project that pulls from the global configs.
+      "project1": {
+        "sheetname": "sheet-name",
+        "range": "A1:M1000",
+      },
+     // project that overrides the global configs.
+      "project2": {
+        "serviceKey": `${ env.HOME }/.google/override-service-key-lang.json`,
+        "spreadsheetId": "override-google-sheet-id",
+        "sheetname": "sheet-name-2",
+        "output": `${ env.HOME }/project-name2/i18n-directory/override`,
+        "locales": [
+          "jp-JP",
+        ],
+        "format": "json",
+      }
     }
-  }
-}
+  };
+})(process.env);
 ```
 
 ## Command: **bundles**
