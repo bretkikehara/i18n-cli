@@ -16,12 +16,15 @@ const EXT_TYPES = {
 
 function transformBundle(ext, serializer, output, locale, bundles) {
   return Object.keys(bundles).map(function (bName) {
-    const bundlePath = `${ output }/${ locale }/${ bName }${ ext }`;
+    const bundleFile = `${ bName }${ ext }`;
+    const bundlePath = `${ output }/${ locale }/${ bundleFile }`;
     const bundle = bundles[bName];
     const data = serializer(bundle) + '\n';
     return writeFile(bundlePath, data).then(function () {
       return Promise.resolve({
+        locale: locale,
         bName: bName,
+        fileName: bundleFile,
         output: bundlePath,
       });
     }, function (err) {
@@ -154,6 +157,59 @@ function parseRows(locales, values) {
   return bundles;
 }
 
+function writeTemplate(str) {
+  return (str || '')
+    .replace(/\n[ ]+/g, '\n')
+    .replace(/\t/g, '  ');
+}
+
+const REGEX_CAMEL_CASE = /([a-z])([A-Z])/g;
+const REGEX_HYPHEN_CASE = /([^-])-([^-])/g;
+function toUnderscoreCase(str) {
+  return (str || '')
+    .replace(REGEX_CAMEL_CASE, '$1_$2')
+    .replace(REGEX_HYPHEN_CASE, '$1_$2')
+    .toLowerCase();
+}
+
+function generateLocaleExports(outputPath, locales) {
+  var i18nIndexFile = writeTemplate(`
+    ${ locales.map(function (locale) {
+      return `import * as ${ toUnderscoreCase(locale).toUpperCase() } from './${ locale }';`;
+    }).join('\n') }
+
+    export default {
+      ${ locales.map(function (locale) {
+        return `\t'${ locale }': ${ toUnderscoreCase(locale).toUpperCase() },`;
+      }).join('\n') }
+    }
+  `);
+  return writeFile(`${ outputPath }/index.js`, i18nIndexFile);
+}
+
+function generateBundleExports(outputPath, files, locales) {
+  var epxt = {};
+  (files || []).forEach(function (file) {
+    epxt[file.bName] = `import ${ file.bName } from './${ file.fileName }';`;
+  });
+
+  var sortedKeys = Object.keys(epxt).sort();
+  var langIndexFile = writeTemplate(`
+    ${ sortedKeys.map(function (key) {
+      return epxt[key];
+    }).join('\n') }
+
+    export default {
+      ${ sortedKeys.map(function (key) {
+        return `\t${ key },`;
+      }).join('\n') }
+    }
+  `);
+  return locales.map(function (locale) {
+    return writeFile(`${ outputPath }/${ locale }/index.js`, langIndexFile);
+  });
+}
+
 function downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, type, locales) {
   console.log(`[${ sheetname }] authorizing access to ${ spreadsheetId }`);
   authorize(serviceKey).then(function (authClient) {
@@ -163,9 +219,20 @@ function downloadBundles(serviceKey, spreadsheetId, sheetname, range, output, ty
       const bundles = parseRows(locales, response.values);
       return Promise.all(WRITE_BUNDLE[type](output, locales, bundles)).then(function (files) {
         (files || []).forEach(function (o) {
-          console.log(`[${ sheetname }] wrote ${ bName } - ${ o.output }`);
+          console.log(`[${ sheetname }] wrote "${ o.bName }" - ${ o.output }`);
         });
-        console.log(`[${ sheetname }] Finished importing`)
+
+        if (type === 'module') {
+          console.log(`[${ sheetname }] Generating imports`);
+          return Promise.all([
+            generateLocaleExports(output, locales),
+            generateBundleExports(output, files, locales),
+          ]).then(function () {
+            console.log(`[${ sheetname }] Finished generating importing`);
+          }, function () {
+            console.error(`[${ sheetname }] Error writing imports`, err);
+          });
+        }
       }, function (err) {
         console.log(`[${ sheetname }] write error`, err);
       });
