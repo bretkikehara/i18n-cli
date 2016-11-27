@@ -7,7 +7,8 @@ const fs = require('fs'),
     sheets = google.sheets('v4'),
     GOOGLE_APIS_SCOPES = [
       'https://www.googleapis.com/auth/spreadsheets',
-    ];
+    ],
+    TIMESTAMP_DATE = new Date().toJSON();
 
 const EXT_TYPES = {
   json: '.lang.json',
@@ -47,14 +48,17 @@ function parseAsArray(arr, split) {
   return arr;
 }
 
+function timestampComment() {
+  return `/** auto-generated on ${ TIMESTAMP_DATE } */`;
+}
+
 const WRITE_SERIIALIZER = {
   json: function (bundle) {
     return JSON.stringify(bundle, null, 2);
   },
   module: function (bundle) {
     const bundleData = JSON.stringify(bundle);
-    const date = new Date().toJSON();
-    return `/** Bundle on ${ date } */\nmodule.exports = ${ bundleData };`;
+    return `${ timestampComment() }\nmodule.exports = ${ bundleData };`;
   },
 };
 
@@ -174,6 +178,8 @@ function toUnderscoreCase(str) {
 
 function generateLocaleExports(outputPath, locales) {
   var i18nIndexFile = writeTemplate(`
+    ${ timestampComment() }
+
     ${ locales.map(function (locale) {
       return `import * as ${ toUnderscoreCase(locale).toUpperCase() } from './${ locale }';`;
     }).join('\n') }
@@ -195,6 +201,8 @@ function generateBundleExports(outputPath, files, locales) {
 
   var sortedKeys = Object.keys(epxt).sort();
   var langIndexFile = writeTemplate(`
+    ${ timestampComment() }
+
     ${ sortedKeys.map(function (key) {
       return epxt[key];
     }).join('\n') }
