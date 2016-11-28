@@ -207,7 +207,7 @@ function generateBundleExports(outputPath, files, locales) {
       return epxt[key];
     }).join('\n') }
 
-    export default {
+    export {
       ${ sortedKeys.map(function (key) {
         return `\t${ key },`;
       }).join('\n') }
